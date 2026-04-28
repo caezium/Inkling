@@ -29,6 +29,7 @@ final class MenuPanelController: ObservableObject {
 
     func show() {
         if let panel, panel.isVisible {
+            NSLog("Inkling.menu: show() — already visible, bringing forward")
             panel.makeKeyAndOrderFront(nil)
             return
         }
@@ -47,12 +48,19 @@ final class MenuPanelController: ObservableObject {
 
         let panel = MenuPanel(contentView: hosting, size: size)
         anchorBelowStatusItem(panel: panel, size: size)
+        NSLog("Inkling.menu: show() — created panel at \(panel.frame), level=\(panel.level.rawValue)")
 
         self.panel = panel
         self.hostingView = hosting
 
-        registerResignObserver(for: panel)
+        // Order front first, register the resign observer AFTER, so the initial
+        // becomeKey doesn't accidentally trigger the dismiss path.
         panel.makeKeyAndOrderFront(nil)
+        DispatchQueue.main.async { [weak self] in
+            guard let self, let panel = self.panel else { return }
+            self.registerResignObserver(for: panel)
+            NSLog("Inkling.menu: show() — panel.isVisible=\(panel.isVisible) isKeyWindow=\(panel.isKeyWindow)")
+        }
     }
 
     func hide() {

@@ -47,7 +47,19 @@ You point Inkling at the few files you actually use (a daily log, a notes file, 
 - macOS 14 or later
 - [Obsidian](https://obsidian.md) is optional but recommended for vault-aware writes; Inkling auto-detects `.obsidian/` and uses Obsidian's bundled CLI when running.
 
-## Build from source
+## Install
+
+### Download the DMG (easiest)
+
+1. Grab the latest **Inkling-x.y.z.dmg** from the [Releases page](https://github.com/caezium/Inkling/releases).
+2. Open the DMG and drag **Inkling.app** into your **Applications** folder.
+3. The first launch may be blocked by Gatekeeper because the app is unsigned. Either:
+   - Right-click `Inkling.app` → **Open** → **Open** in the dialog, *or*
+   - Run once from Terminal: `xattr -dr com.apple.quarantine /Applications/Inkling.app && open /Applications/Inkling.app`
+4. The drop icon appears in your menu bar. Click it to open the dropdown panel and add files.
+5. Optional: in the dropdown's *Behavior* section, toggle **Launch at login** so Inkling starts with your Mac.
+
+### Build from source
 
 ```bash
 brew install xcodegen
@@ -59,7 +71,7 @@ xcodebuild -project Inkling.xcodeproj -scheme Inkling -configuration Release \
 open build/Build/Products/Release/Inkling.app
 ```
 
-The app is unsigned. macOS Gatekeeper may show a warning on first launch — right-click the app, choose **Open**, then **Open** again.
+To produce a redistributable DMG: `VERSION=x.y.z ./scripts/make-dmg.sh` outputs `Inkling-x.y.z.dmg` in the repo root, ready to upload via `gh release create v<x.y.z>`.
 
 ## Project layout
 

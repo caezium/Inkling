@@ -18,6 +18,10 @@ final class MenuPanel: NSPanel {
         self.isMovableByWindowBackground = false
         self.hidesOnDeactivate = false
         self.animationBehavior = .utilityWindow
+        // Non-activating panels default to becomesKeyOnlyIfNeeded=true, which
+        // means a panel of toggles + buttons may never accept key focus and
+        // can be invisible-feeling. Force it.
+        self.becomesKeyOnlyIfNeeded = false
         self.contentView = contentView
     }
 

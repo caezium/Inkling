@@ -88,7 +88,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     @objc private func statusItemClicked(_ sender: Any?) {
-        // Hide the floating capture panel first so the dropdown lands on top.
+        NSLog("Inkling.menu: statusItemClicked, panelVisible=\(menuPanelController.isVisible)")
         captureController.hide()
         menuPanelController.toggle()
     }
