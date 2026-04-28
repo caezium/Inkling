@@ -4,16 +4,24 @@ enum AttachmentService {
     /// Saves an arbitrary pasteboard image and returns a markdown link relative to the note.
     static func savePastedImage(_ image: NSImage, for file: TrackedFile) -> String? {
         let target = saveLocation(for: file, suggestedExtension: "png")
+        NSLog("Inkling.attach: dir=\(target.directory.path) name=\(target.filename)")
         do {
             try FileManager.default.createDirectory(at: target.directory, withIntermediateDirectories: true)
         } catch {
-            NSLog("Inkling: couldn't create attachments dir: \(error)")
+            NSLog("Inkling.attach: createDirectory failed: \(error)")
             return nil
         }
 
-        guard let tiff = image.tiffRepresentation,
-              let bitmap = NSBitmapImageRep(data: tiff),
-              let png = bitmap.representation(using: .png, properties: [:]) else {
+        guard let tiff = image.tiffRepresentation else {
+            NSLog("Inkling.attach: image has no tiff representation")
+            return nil
+        }
+        guard let bitmap = NSBitmapImageRep(data: tiff) else {
+            NSLog("Inkling.attach: couldn't make bitmap rep from tiff")
+            return nil
+        }
+        guard let png = bitmap.representation(using: .png, properties: [:]) else {
+            NSLog("Inkling.attach: couldn't convert bitmap to png")
             return nil
         }
 
@@ -21,11 +29,13 @@ enum AttachmentService {
         do {
             try png.write(to: url)
         } catch {
-            NSLog("Inkling: couldn't write attachment: \(error)")
+            NSLog("Inkling.attach: write failed: \(error)")
             return nil
         }
 
-        return "![](\(relativeLinkPath(for: url, note: file.resolvedURL)))"
+        let link = "![](\(relativeLinkPath(for: url, note: file.resolvedURL)))"
+        NSLog("Inkling.attach: saved \(url.path) -> \(link)")
+        return link
     }
 
     /// Copies a dropped file into the attachment folder. Images become `![](path)`,

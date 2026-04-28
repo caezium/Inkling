@@ -71,7 +71,3 @@ Sources/Inkling/
 ## Status
 
 Personal project; APIs and storage formats may change. Bug reports and PRs welcome.
-
-## License
-
-[MIT](LICENSE).

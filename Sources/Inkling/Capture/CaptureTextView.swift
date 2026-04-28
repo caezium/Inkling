@@ -94,37 +94,58 @@ private final class InterceptingTextView: NSTextView {
 
     override func paste(_ sender: Any?) {
         let pb = NSPasteboard.general
+        let availableTypes = pb.types?.map(\.rawValue).joined(separator: ", ") ?? "(none)"
+        NSLog("Inkling.paste: types=[\(availableTypes)] imageHandler=\(imageHandler != nil) fileHandler=\(fileURLHandler != nil)")
 
-        // 1. File URLs (e.g. file copied from Finder) — treat them like a drop.
-        if let handler = fileURLHandler,
-           let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
-           !urls.isEmpty {
-            let links = urls.compactMap(handler)
-            if !links.isEmpty {
-                insertText(links.joined(separator: " "), replacementRange: selectedRange())
+        // 1. File URLs first — copy a file in Finder, paste here, get an attachment link.
+        if let handler = fileURLHandler {
+            if let urls = pb.readObjects(forClasses: [NSURL.self], options: [.urlReadingFileURLsOnly: true]) as? [URL],
+               !urls.isEmpty {
+                let links = urls.compactMap(handler)
+                if !links.isEmpty {
+                    insertText(links.joined(separator: " "), replacementRange: selectedRange())
+                    NSLog("Inkling.paste: handled \(links.count) file URL(s)")
+                    return
+                }
+            }
+            // Fallback: some pasteboards expose only public.file-url as a string.
+            if let s = pb.string(forType: NSPasteboard.PasteboardType("public.file-url")),
+               let url = URL(string: s), url.isFileURL,
+               let link = handler(url) {
+                insertText(link, replacementRange: selectedRange())
+                NSLog("Inkling.paste: handled file URL via public.file-url string")
                 return
             }
         }
 
-        // 2. Inline image data (TIFF/PNG/JPEG, screenshots, drag-from-browser, etc.).
+        // 2. Inline image data — screenshots, drag-from-browser, copied from Preview, etc.
         if let handler = imageHandler {
-            // NSImage(pasteboard:) handles the common types but sometimes returns nil
-            // when only a single binary blob (e.g. .png) is on the board, so fall back manually.
             if let image = NSImage(pasteboard: pb), let markdown = handler(image) {
                 insertText(markdown, replacementRange: selectedRange())
+                NSLog("Inkling.paste: handled image via NSImage(pasteboard:)")
                 return
             }
-            let imageTypes: [NSPasteboard.PasteboardType] = [.tiff, .png, NSPasteboard.PasteboardType("public.jpeg"), NSPasteboard.PasteboardType("public.png")]
+            let imageTypes: [NSPasteboard.PasteboardType] = [
+                .tiff,
+                .png,
+                NSPasteboard.PasteboardType("public.png"),
+                NSPasteboard.PasteboardType("public.jpeg"),
+                NSPasteboard.PasteboardType("public.heic"),
+                NSPasteboard.PasteboardType("com.compuserve.gif"),
+                NSPasteboard.PasteboardType("public.tiff")
+            ]
             for type in imageTypes {
                 if let data = pb.data(forType: type),
                    let img = NSImage(data: data),
                    let markdown = handler(img) {
                     insertText(markdown, replacementRange: selectedRange())
+                    NSLog("Inkling.paste: handled image via type=\(type.rawValue)")
                     return
                 }
             }
         }
 
+        NSLog("Inkling.paste: nothing extractable, deferring to super (text paste)")
         super.paste(sender)
     }
 
@@ -170,6 +191,11 @@ private final class InterceptingTextView: NSTextView {
             intentHandler?(.openFile); return
         case UInt16(kVK_ANSI_Backslash) where cmd && !shift && !option:
             intentHandler?(.dictate); return
+        case UInt16(kVK_ANSI_V) where cmd && !shift && !option:
+            // Force-route ⌘V through our paste override so we always get a
+            // chance to peek at the pasteboard for images / file URLs.
+            paste(self)
+            return
         default:
             break
         }
