@@ -10,6 +10,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private var statusItem: NSStatusItem!
     private var captureController: CaptureWindowController!
+    private var menuPanelController: MenuPanelController!
     private let hotCorner = HotCornerService()
     private var lastUsedFileID: UUID?
     private var cancellables = Set<AnyCancellable>()
@@ -19,6 +20,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
         captureController = CaptureWindowController(store: store, prefs: prefs)
+        menuPanelController = MenuPanelController(store: store, prefs: prefs)
 
         installStatusItem()
         registerAllHotkeys()
@@ -42,12 +44,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             case .quit:
                 NSApp.terminate(nil)
             case .undo, .dictate, .sectionPicker:
-                break // handled inside CaptureView
+                break
             }
         }
+        menuPanelController.onCapture = { [weak self] in
+            guard let self else { return }
+            self.captureController.show(initialFileID: self.lastUsedFileID ?? self.store.files.first?.id)
+        }
+        menuPanelController.onCaptureFile = { [weak self] id in
+            guard let self else { return }
+            self.lastUsedFileID = id
+            self.captureController.show(initialFileID: id)
+        }
+        menuPanelController.onQuit = { NSApp.terminate(nil) }
+        menuPanelController.statusItem = statusItem
 
         if store.files.isEmpty {
-            // First launch — gently prompt the user via the settings window.
             DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { [weak self] in
                 self?.openSettings()
             }
@@ -69,73 +81,16 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             )
             button.image?.isTemplate = true
             button.toolTip = "Inkling"
+            button.target = self
+            button.action = #selector(statusItemClicked(_:))
+            button.sendAction(on: [.leftMouseUp, .rightMouseUp])
         }
-        rebuildMenu()
     }
 
-    private func rebuildMenu() {
-        let menu = NSMenu()
-
-        let captureItem = NSMenuItem(
-            title: "Capture…",
-            action: #selector(captureCommand(_:)),
-            keyEquivalent: ""
-        )
-        captureItem.target = self
-        menu.addItem(captureItem)
-
-        if !store.files.isEmpty {
-            menu.addItem(.separator())
-            let header = NSMenuItem()
-            header.title = "Open file"
-            header.isEnabled = false
-            menu.addItem(header)
-            for file in store.files {
-                let item = NSMenuItem(
-                    title: file.displayName,
-                    action: #selector(captureForSpecificFile(_:)),
-                    keyEquivalent: ""
-                )
-                item.target = self
-                item.representedObject = file.id
-                if let hk = file.hotkey {
-                    item.title = "\(file.displayName)  \(hk.displayString)"
-                }
-                menu.addItem(item)
-            }
-        }
-
-        menu.addItem(.separator())
-
-        let settings = NSMenuItem(
-            title: "Settings…",
-            action: #selector(openSettingsCommand(_:)),
-            keyEquivalent: ","
-        )
-        settings.target = self
-        menu.addItem(settings)
-
-        menu.addItem(.separator())
-        let quit = NSMenuItem(
-            title: "Quit Inkling",
-            action: #selector(NSApplication.terminate(_:)),
-            keyEquivalent: "q"
-        )
-        menu.addItem(quit)
-
-        statusItem.menu = menu
-    }
-
-    // MARK: - Menu actions
-
-    @objc private func captureCommand(_ sender: Any?) {
-        captureController.toggleOrSwitch(fileID: lastUsedFileID ?? store.files.first?.id)
-    }
-
-    @objc private func captureForSpecificFile(_ sender: NSMenuItem) {
-        guard let id = sender.representedObject as? UUID else { return }
-        lastUsedFileID = id
-        captureController.toggleOrSwitch(fileID: id)
+    @objc private func statusItemClicked(_ sender: Any?) {
+        // Hide the floating capture panel first so the dropdown lands on top.
+        captureController.hide()
+        menuPanelController.toggle()
     }
 
     @objc private func openSettingsCommand(_ sender: Any?) {
@@ -143,16 +98,9 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func openSettings() {
-        // Make sure the floating capture panel doesn't sit on top of the settings window.
+        // Settings live in the dropdown panel; surface it.
         captureController.hide()
-        NSApp.activate(ignoringOtherApps: true)
-        let selector: Selector
-        if #available(macOS 14.0, *) {
-            selector = Selector(("showSettingsWindow:"))
-        } else {
-            selector = Selector(("showPreferencesWindow:"))
-        }
-        NSApp.sendAction(selector, to: nil, from: nil)
+        menuPanelController.show()
     }
 
     // MARK: - Hotkeys
@@ -183,10 +131,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private func observeChanges() {
         store.$files
             .receive(on: RunLoop.main)
-            .sink { [weak self] _ in
-                self?.registerAllHotkeys()
-                self?.rebuildMenu()
-            }
+            .sink { [weak self] _ in self?.registerAllHotkeys() }
             .store(in: &cancellables)
 
         prefs.$globalHotkey
