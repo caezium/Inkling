@@ -4,6 +4,12 @@ A macOS menu-bar app for jotting one line into the right file — from anywhere 
 
 You point Inkling at the few files you actually use (a daily log, a notes file, a running todo list, an Obsidian vault note), give each one a hotkey, and you're done. Hit the hotkey, type, press return — the line lands in the file.
 
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/c8da4ca2-6b8e-4700-968a-459f1ee5ae39" />
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/023e354a-c986-45a7-81d1-a8747a2926ec" />
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/1d8d4f8b-86af-4869-b761-cc6171f8420e" />
+<img width="400" alt="image" src="https://github.com/user-attachments/assets/86fd1591-8a34-4c1b-b015-1394233b210d" />
+
+
 ## Features
 
 - **Menu-bar capture panel** — translucent floating card with a single text input. ⎋ or ⌘W to dismiss, ⌘↩ to submit.
