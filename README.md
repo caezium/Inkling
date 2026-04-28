@@ -67,10 +67,11 @@ The app is unsigned. macOS Gatekeeper may show a warning on first launch — rig
 Sources/Inkling/
 ├── App/            entry point, AppDelegate, status item, hotkey wiring
 ├── Capture/        floating panel, text view, switcher, section picker
+├── Menu/           Control-Center-style dropdown panel + pill components
 ├── Models/         TrackedFile, FileStore, Preferences
 ├── Services/       Obsidian CLI, file writer, slash commands, attachments,
 │                   hot corner, write history, markdown reader, templates
-├── Settings/       file editor, hotkey recorder, settings tabs
+├── Settings/       hotkey recorder
 └── Shared/         theme, card background, hotkey type
 ```
 
