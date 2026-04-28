@@ -67,6 +67,7 @@ enum CaptureIntent {
     case submitPrepend
     case submitAppendAndOpen
     case openFile
+    case openSettings
     case dismiss
     case switchFile
     case insertNewline
@@ -196,6 +197,12 @@ private final class InterceptingTextView: NSTextView {
             // chance to peek at the pasteboard for images / file URLs.
             paste(self)
             return
+        case UInt16(kVK_ANSI_Comma) where cmd && !shift && !option:
+            // Don't auto-repeat — holding ⌘+, would otherwise toggle the
+            // settings panel rapidly. Only fire on the initial keystroke.
+            if event.isARepeat { return }
+            NSLog("Inkling.capture: ⌘+, intercepted in capture text view")
+            intentHandler?(.openSettings); return
         default:
             break
         }

@@ -1,17 +1,22 @@
 import SwiftUI
 
 /// Container styling for a single Control-Center-style pill row.
+/// Solid-ish translucent fill so pills pop from the glass behind them
+/// (matches Apple Control Center / Notification Center pill chips).
 struct PillCard<Content: View>: View {
     @ViewBuilder var content: () -> Content
     var body: some View {
         content()
             .padding(.horizontal, 14)
-            .padding(.vertical, 10)
+            .padding(.vertical, 13)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(.ultraThinMaterial, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+            .background(
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .fill(Color.white.opacity(0.12))
+            )
             .overlay(
-                RoundedRectangle(cornerRadius: 16, style: .continuous)
-                    .stroke(Color.white.opacity(0.06), lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: 14, style: .continuous)
+                    .stroke(Color.white.opacity(0.10), lineWidth: 0.5)
             )
     }
 }
@@ -19,11 +24,16 @@ struct PillCard<Content: View>: View {
 struct PillSectionHeader: View {
     let text: String
     var body: some View {
-        Text(text.uppercased())
-            .font(.system(size: 10, weight: .semibold))
-            .foregroundStyle(InklingTheme.tertiaryText)
-            .padding(.horizontal, 6)
-            .padding(.top, 4)
+        HStack {
+            Text(text.uppercased())
+                .font(.system(size: 10, weight: .semibold))
+                .foregroundStyle(Color.white.opacity(0.55))
+                .tracking(0.6)
+            Spacer()
+        }
+        .padding(.horizontal, 4)
+        .padding(.top, 6)
+        .padding(.bottom, 2)
     }
 }
 

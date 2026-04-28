@@ -285,6 +285,9 @@ struct CaptureView: View {
         case .openFile:
             if let f = activeFile { ObsidianService.open(file: f, prefs: prefs) }
             onClose()
+        case .openSettings:
+            NSLog("Inkling.capture: openSettings intent → onSlashAction(.openSettings)")
+            onSlashAction(.openSettings)
         case .dismiss:
             onClose()
         case .switchFile:

@@ -33,8 +33,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         captureController.onSlashAction = { [weak self] action in
             guard let self else { return }
+            NSLog("Inkling.menu: AppDelegate onSlashAction received \(action)")
             switch action {
             case .openSettings:
+                NSLog("Inkling.menu: AppDelegate handling .openSettings → menuPanelController.show()")
                 self.openSettings()
             case .openActiveFile:
                 if let id = self.captureController.activeFileID,
@@ -57,6 +59,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             self.captureController.show(initialFileID: id)
         }
         menuPanelController.onQuit = { NSApp.terminate(nil) }
+        menuPanelController.onHide = { [weak self] in
+            // If the user opened settings while the capture panel was up,
+            // dismissing settings should land them back in the text field.
+            self?.captureController.bringToFront()
+        }
         menuPanelController.statusItem = statusItem
 
         if store.files.isEmpty {
@@ -89,7 +96,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     @objc private func statusItemClicked(_ sender: Any?) {
         NSLog("Inkling.menu: statusItemClicked, panelVisible=\(menuPanelController.isVisible)")
-        captureController.hide()
+        // Menu panel can float above the capture panel — don't dismiss it.
         menuPanelController.toggle()
     }
 
@@ -98,9 +105,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     func openSettings() {
-        // Settings live in the dropdown panel; surface it.
-        captureController.hide()
-        menuPanelController.show()
+        // Pressing ⌘+, (or `/settings`) toggles — opens if hidden, hides if shown.
+        menuPanelController.toggle()
     }
 
     // MARK: - Hotkeys

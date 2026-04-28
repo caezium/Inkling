@@ -15,6 +15,13 @@ final class CaptureWindowController: ObservableObject {
 
     var isVisible: Bool { panel?.isVisible == true }
 
+    /// Brings the capture panel back to key focus (used after the menu
+    /// dropdown dismisses, so the user lands back in the text field).
+    func bringToFront() {
+        guard let panel, panel.isVisible else { return }
+        panel.makeKeyAndOrderFront(nil)
+    }
+
     init(store: FileStore, prefs: Preferences, history: WriteHistory = .shared) {
         self.store = store
         self.prefs = prefs

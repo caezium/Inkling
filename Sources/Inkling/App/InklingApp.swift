@@ -1,16 +1,19 @@
 import SwiftUI
+import AppKit
 
 @main
 struct InklingApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
 
     var body: some Scene {
-        // Inkling has no traditional windows — settings live in the menu-bar dropdown.
-        // The Settings scene must exist (App protocol requires at least one scene)
-        // but is intentionally empty; ⌘+, will land on the EmptyView and we never
-        // open it from anywhere in our code.
-        Settings {
-            EmptyView()
-        }
+        // We need at least one Scene, but we don't want a SwiftUI Settings
+        // window OR an auto-bound ⌘+, menu item — that would intercept the
+        // shortcut before our InterceptingTextView keyDown ever sees it.
+        // Replacing the .appSettings group with an empty body removes the
+        // menu entry entirely, freeing ⌘+, to reach the capture panel.
+        Settings { EmptyView() }
+            .commands {
+                CommandGroup(replacing: .appSettings) { }
+            }
     }
 }

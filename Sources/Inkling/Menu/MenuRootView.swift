@@ -5,6 +5,7 @@ import UniformTypeIdentifiers
 struct MenuRootView: View {
     @ObservedObject var store: FileStore
     @ObservedObject var prefs: Preferences
+    var maxCardHeight: CGFloat
 
     var onCapture: () -> Void
     var onCaptureFile: (UUID) -> Void
@@ -18,10 +19,13 @@ struct MenuRootView: View {
     var body: some View {
         NavigationStack(path: $path) {
             rootList
+                .scrollContentBackground(.hidden)
+                .background(Color.clear)
+                .toolbarBackground(.hidden, for: .windowToolbar)
                 .navigationDestination(for: Route.self) { route in
                     switch route {
                     case .file(let id):
-                        if let f = store.files.first(where: { $0.id == id }) {
+                        if store.files.contains(where: { $0.id == id }) {
                             MenuFileDetailView(
                                 file: bindingFor(id: id),
                                 onDelete: {
@@ -30,92 +34,101 @@ struct MenuRootView: View {
                                 },
                                 onPickFile: { repickFile(for: id) }
                             )
+                            .scrollContentBackground(.hidden)
+                            .background(Color.clear)
                         } else {
                             Text("File missing").foregroundStyle(.secondary)
                         }
                     }
                 }
         }
-        .frame(width: 320, height: 480)
-        .background(CardBackground(cornerRadius: 22, material: .hudWindow))
-        .overlay(
-            RoundedRectangle(cornerRadius: 22, style: .continuous)
-                .stroke(Color.white.opacity(0.08), lineWidth: 0.5)
+        .frame(width: 280)
+        .frame(maxHeight: maxCardHeight)
+        // .popover gives a clearly translucent / blurry surface that lets
+        // the desktop and other windows show through, instead of looking
+        // like a solid dark slab. Tint is layered on top via SwiftUI so it
+        // doesn't suppress the blur the way a wrapping NSView does.
+        .background(
+            CardBackground(cornerRadius: 18, material: .popover)
         )
-        .shadow(color: Color.black.opacity(0.35), radius: 28, x: 0, y: 14)
-        .clipShape(RoundedRectangle(cornerRadius: 22, style: .continuous))
+        .overlay(
+            RoundedRectangle(cornerRadius: 18, style: .continuous)
+                .fill(Color.blue.opacity(0.10))
+                .allowsHitTesting(false)
+        )
+        .shadow(color: Color.black.opacity(0.32), radius: 24, x: 0, y: 12)
+        .padding(24)
         .preferredColorScheme(.dark)
     }
 
     // MARK: - Root list
 
     private var rootList: some View {
-        ScrollView {
-            VStack(spacing: 8) {
-                headerRow
+        // VStack (not ScrollView) so SwiftUI reports a real intrinsic height
+        // — that's how MenuPanelController knows to size the panel to its
+        // content rather than a fixed slab.
+        VStack(spacing: 8) {
+            headerRow
 
-                PillButton(icon: "drop.fill", label: "Capture",
-                           trailing: prefs.globalHotkey?.displayString,
-                           action: onCapture)
+            PillButton(icon: "drop.fill", label: "Capture",
+                       trailing: prefs.globalHotkey?.displayString,
+                       action: onCapture)
 
-                if !store.files.isEmpty {
-                    PillSectionHeader(text: "Files")
-                    ForEach(store.files) { file in
-                        PillNav(
-                            icon: iconName(for: file),
-                            label: file.displayName,
-                            detail: file.path,
-                            trailing: file.hotkey?.displayString,
-                            action: { path.append(.file(file.id)) }
-                        )
-                        .contextMenu {
-                            Button("Capture to \(file.displayName)") { onCaptureFile(file.id) }
-                            Button("Edit") { path.append(.file(file.id)) }
-                            Divider()
-                            Button("Remove", role: .destructive) { store.remove(id: file.id) }
-                        }
+            if !store.files.isEmpty {
+                PillSectionHeader(text: "Files")
+                ForEach(store.files) { file in
+                    PillNav(
+                        icon: iconName(for: file),
+                        label: file.displayName,
+                        detail: file.path,
+                        trailing: file.hotkey?.displayString,
+                        action: { path.append(.file(file.id)) }
+                    )
+                    .contextMenu {
+                        Button("Capture to \(file.displayName)") { onCaptureFile(file.id) }
+                        Button("Edit") { path.append(.file(file.id)) }
+                        Divider()
+                        Button("Remove", role: .destructive) { store.remove(id: file.id) }
                     }
                 }
-
-                PillButton(icon: "plus", label: "Add file…", action: pickFileToAdd)
-
-                PillSectionHeader(text: "Behavior")
-                PillToggle(icon: "speaker.wave.2.fill", label: "Sound on save", isOn: $prefs.playSoundOnSave)
-                PillToggle(icon: "power", label: "Launch at login", isOn: $prefs.launchAtLogin)
-                PillHotkey(icon: "command", label: "Global hotkey", hotkey: $prefs.globalHotkey)
-
-                PillSectionHeader(text: "Hot corner")
-                PillPicker(
-                    icon: "rectangle.inset.topleft.filled",
-                    label: "Trigger from",
-                    selection: $prefs.hotCorner,
-                    options: HotCornerService.Corner.allCases,
-                    optionLabel: { $0.label }
-                )
-                PillSlider(
-                    icon: "timer",
-                    label: "Dwell",
-                    value: $prefs.hotCornerDwell,
-                    range: 0.05...1.0,
-                    step: 0.05,
-                    format: { String(format: "%.2fs", $0) },
-                    disabled: prefs.hotCorner == .none
-                )
-
-                PillSectionHeader(text: "Obsidian")
-                PillToggle(icon: "square.and.pencil", label: "Write through Obsidian",
-                           sublabel: ObsidianService.hasCLI ? nil : "obsidian-cli not detected",
-                           isOn: $prefs.preferObsidianForWrite)
-                PillToggle(icon: "arrow.up.forward.app", label: "Open in Obsidian",
-                           isOn: $prefs.preferObsidianForOpen)
-
-                Spacer(minLength: 4)
-
-                PillButton(icon: "power.dotted", label: "Quit Inkling", trailing: "⌘Q",
-                           role: .destructive, action: onQuit)
             }
-            .padding(10)
+
+            PillButton(icon: "plus", label: "Add file…", action: pickFileToAdd)
+
+            PillSectionHeader(text: "Behavior")
+            PillToggle(icon: "speaker.wave.2.fill", label: "Sound on save", isOn: $prefs.playSoundOnSave)
+            PillToggle(icon: "power", label: "Launch at login", isOn: $prefs.launchAtLogin)
+            PillHotkey(icon: "command", label: "Global hotkey", hotkey: $prefs.globalHotkey)
+
+            PillSectionHeader(text: "Hot corner")
+            PillPicker(
+                icon: "rectangle.inset.topleft.filled",
+                label: "Trigger from",
+                selection: $prefs.hotCorner,
+                options: HotCornerService.Corner.allCases,
+                optionLabel: { $0.label }
+            )
+            PillSlider(
+                icon: "timer",
+                label: "Dwell",
+                value: $prefs.hotCornerDwell,
+                range: 0.05...1.0,
+                step: 0.05,
+                format: { String(format: "%.2fs", $0) },
+                disabled: prefs.hotCorner == .none
+            )
+
+            PillSectionHeader(text: "Obsidian")
+            PillToggle(icon: "square.and.pencil", label: "Write through Obsidian",
+                       sublabel: ObsidianService.hasCLI ? nil : "obsidian-cli not detected",
+                       isOn: $prefs.preferObsidianForWrite)
+            PillToggle(icon: "arrow.up.forward.app", label: "Open in Obsidian",
+                       isOn: $prefs.preferObsidianForOpen)
+
+            PillButton(icon: "power.dotted", label: "Quit Inkling", trailing: "⌘Q",
+                       role: .destructive, action: onQuit)
         }
+        .padding(10)
     }
 
     private var headerRow: some View {
